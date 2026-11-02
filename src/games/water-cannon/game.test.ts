@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CANNON,
+  CONFETTI_LIFE,
+  CONFETTI_PER_HIT,
   TANK_SIZE,
   createState,
   fire,
@@ -48,6 +50,27 @@ describe('water cannon', () => {
     expect(state.score).toBe(scoreForHit(target));
     expect(state.shots).toHaveLength(0);
     expect(state.targets[0].x).toBeLessThan(0);
+  });
+
+  it('bursts confetti where a target is hit', () => {
+    const state = createState();
+    state.targets = [{ ...target }];
+    state.shots = [{ x: target.x, y: target.y, vx: 0, vy: 0 }];
+    step(state, 0);
+    expect(state.confetti).toHaveLength(CONFETTI_PER_HIT);
+    expect(state.confetti.every((c) => c.x === target.x && c.y === target.y)).toBe(true);
+  });
+
+  it('clears the confetti once the celebration is over', () => {
+    const state = createState();
+    state.targets = [{ ...target }];
+    state.shots = [{ x: target.x, y: target.y, vx: 0, vy: 0 }];
+    step(state, 0);
+    state.targets = [];
+    step(state, CONFETTI_LIFE / 2);
+    expect(state.confetti).toHaveLength(CONFETTI_PER_HIT);
+    step(state, CONFETTI_LIFE / 2);
+    expect(state.confetti).toHaveLength(0);
   });
 
   it('ends the game when the tank is empty and the last shot has landed', () => {

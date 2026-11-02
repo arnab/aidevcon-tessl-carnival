@@ -11,6 +11,11 @@ const RAILS = [
   { y: 290, speed: 60, radius: 34 },
 ];
 const TARGETS_PER_RAIL = 3;
+export const CONFETTI_PER_HIT = 16;
+export const CONFETTI_LIFE = 0.9;
+const CONFETTI_SPEED = 220;
+const CONFETTI_GRAVITY = 420;
+const CONFETTI_COLORS = ['accent', 'stripeA', 'stripeB', 'water', 'danger'] as const;
 
 export interface Target {
   x: number;
@@ -33,10 +38,20 @@ export interface Splash {
   age: number;
 }
 
+export interface Confetti {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+  color: (typeof CONFETTI_COLORS)[number];
+}
+
 export interface WaterCannonState {
   targets: Target[];
   shots: Shot[];
   splashes: Splash[];
+  confetti: Confetti[];
   tank: number;
   score: number;
   phase: 'playing' | 'over';
@@ -52,7 +67,15 @@ export function createState(): WaterCannonState {
       speed: rail.speed,
     })),
   );
-  return { targets, shots: [], splashes: [], tank: TANK_SIZE, score: 0, phase: 'playing' };
+  return {
+    targets,
+    shots: [],
+    splashes: [],
+    confetti: [],
+    tank: TANK_SIZE,
+    score: 0,
+    phase: 'playing',
+  };
 }
 
 /** Faster targets are worth more: 10 points per 60 px/s, rounded up. */
@@ -62,6 +85,22 @@ export function scoreForHit(target: Target): number {
 
 export function isHit(shot: Shot, target: Target): boolean {
   return Math.hypot(shot.x - target.x, shot.y - target.y) <= target.radius;
+}
+
+/** A celebration burst: confetti flying out evenly in every direction from (x, y). */
+export function burstConfetti(x: number, y: number): Confetti[] {
+  return Array.from({ length: CONFETTI_PER_HIT }, (_, i) => {
+    const angle = (i / CONFETTI_PER_HIT) * Math.PI * 2;
+    const speed = CONFETTI_SPEED * (i % 2 === 0 ? 1 : 0.6);
+    return {
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - CONFETTI_SPEED / 2,
+      age: 0,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    };
+  });
 }
 
 /** Fires one shot of water towards the aim point. Returns false if nothing fired. */
@@ -96,6 +135,7 @@ export function step(state: WaterCannonState, dt: number): void {
     if (target) {
       state.score += scoreForHit(target);
       state.splashes.push({ x: target.x, y: target.y, age: 0 });
+      state.confetti.push(...burstConfetti(target.x, target.y));
       // Send the soaked target back to the start of its rail.
       target.x = target.speed > 0 ? -target.radius : WIDTH + target.radius;
     } else if (shot.y > -10 && shot.x > -10 && shot.x < WIDTH + 10) {
@@ -106,6 +146,14 @@ export function step(state: WaterCannonState, dt: number): void {
 
   for (const splash of state.splashes) splash.age += dt;
   state.splashes = state.splashes.filter((s) => s.age < 0.4);
+
+  for (const piece of state.confetti) {
+    piece.x += piece.vx * dt;
+    piece.y += piece.vy * dt;
+    piece.vy += CONFETTI_GRAVITY * dt;
+    piece.age += dt;
+  }
+  state.confetti = state.confetti.filter((c) => c.age < CONFETTI_LIFE);
 
   if (state.tank === 0 && state.shots.length === 0) state.phase = 'over';
 }
@@ -161,6 +209,16 @@ function draw(
     ctx.beginPath();
     ctx.arc(splash.x, splash.y, 10 + splash.age * 90, 0, Math.PI * 2);
     ctx.stroke();
+  }
+
+  for (const piece of state.confetti) {
+    ctx.globalAlpha = 1 - piece.age / CONFETTI_LIFE;
+    ctx.fillStyle = colors[piece.color];
+    ctx.save();
+    ctx.translate(piece.x, piece.y);
+    ctx.rotate(piece.age * 12 + piece.vx);
+    ctx.fillRect(-4, -2, 8, 4);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 
