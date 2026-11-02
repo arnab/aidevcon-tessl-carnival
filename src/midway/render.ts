@@ -1,6 +1,6 @@
 import { canvasFont, theme } from '../carnival';
 import bannerUrl from './aidevcon-banner.png';
-import { palette } from './palette';
+import { palette, style } from './palette';
 import {
   CART_KINDS,
   toScreen,
@@ -188,6 +188,11 @@ function onPlane(ctx: Ctx, origin: Pt, paint: () => void) {
   ctx.restore();
 }
 
+/** The bold small font the map's signs use, in the theme's own lettering. */
+function signFont() {
+  return `bold ${theme.font.small}px ${style.font}`;
+}
+
 /** A wooden sign with text, in plane-local coordinates centred on (0, 0). */
 function signBoard(
   ctx: Ctx,
@@ -210,7 +215,7 @@ function signBoard(
     ctx.lineWidth = 2;
     ctx.stroke();
   }
-  ctx.font = canvasFont('small', 'bold');
+  ctx.font = signFont();
   const fit = Math.min(
     (height * 0.62) / theme.font.small,
     (width - 8) / ctx.measureText(text).width,
@@ -821,10 +826,29 @@ function person(
     look.pants,
     2.6,
   );
-  ctx.fillStyle = look.shirt;
-  ctx.beginPath();
-  ctx.roundRect(x - 4, y - 16.5, 8, 9.5, 3);
-  ctx.fill();
+  if (style.costume === 'cloak') {
+    // A cloak to the knees, over the shirt.
+    ctx.fillStyle = look.shirt;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y - 16.5);
+    ctx.lineTo(x + 4, y - 16.5);
+    ctx.lineTo(x + 5.5 - swing, y - 4);
+    ctx.lineTo(x - 5.5 - swing, y - 4);
+    ctx.closePath();
+    ctx.fill();
+    oval(ctx, x, y - 16.5, 1, 1, palette.gold);
+  } else {
+    ctx.fillStyle = style.costume === 'spacesuit' ? palette.metal : look.shirt;
+    ctx.beginPath();
+    ctx.roundRect(x - 4, y - 16.5, 8, 9.5, 3);
+    ctx.fill();
+    if (style.costume === 'spacesuit') {
+      // A belt and a mission patch in the visitor's colour.
+      ctx.fillStyle = look.shirt;
+      ctx.fillRect(x - 4, y - 11, 8, 1.5);
+      oval(ctx, x + 1.5, y - 14, 1.2, 1.2, look.shirt);
+    }
+  }
   stroke(
     ctx,
     [
@@ -844,6 +868,28 @@ function person(
     2,
   );
   oval(ctx, x, y - 20.5, 4, 4, look.skin);
+  if (style.costume === 'spacesuit') {
+    // A bubble helmet, with the face showing through the visor.
+    ctx.fillStyle = look.hair;
+    ctx.beginPath();
+    ctx.arc(x, y - 21, 4.2, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.fill();
+    if (!options.back) {
+      oval(ctx, x - 1.5 + dir, y - 20.3, 0.6, 0.7, palette.ink);
+      oval(ctx, x + 1.5 + dir, y - 20.3, 0.6, 0.7, palette.ink);
+    }
+    ctx.strokeStyle = palette.metalShade;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y - 20.8, 5.6, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha *= 0.3;
+    oval(ctx, x, y - 20.8, 5.4, 5.4, palette.sky2);
+    ctx.globalAlpha /= 0.3;
+    oval(ctx, x - 2.2, y - 23, 1.2, 0.8, palette.white);
+    hat(ctx, x, y, dir, look, options);
+    return finishPerson(ctx, x, y, options);
+  }
   ctx.fillStyle = look.hair;
   ctx.beginPath();
   if (options.back) ctx.arc(x, y - 20.8, 4.2, 0, Math.PI * 2);
@@ -853,25 +899,79 @@ function person(
     oval(ctx, x - 1.5 + dir, y - 20.3, 0.6, 0.7, palette.ink);
     oval(ctx, x + 1.5 + dir, y - 20.3, 0.6, 0.7, palette.ink);
   }
-  if (look.cap) {
-    ctx.fillStyle = look.cap;
-    ctx.beginPath();
-    ctx.arc(x, y - 22, 4.4, Math.PI, Math.PI * 2);
-    ctx.fill();
-    if (!options.back)
-      poly(
-        ctx,
-        [
-          [x, y - 22.5],
-          [x + dir * 7, y - 22.5],
-          [x + dir * 7, y - 21.3],
-          [x, y - 21.3],
-        ],
-        look.cap,
-      );
+  hat(ctx, x, y, dir, look, options);
+  finishPerson(ctx, x, y, options);
+}
+
+/** The player's hat, in the theme's style: a cap, a helmet antenna, a crown or a wizard's hat. */
+function hat(ctx: Ctx, x: number, y: number, dir: number, look: Look, options: { back?: boolean }) {
+  if (!look.cap) return;
+  ctx.fillStyle = look.cap;
+  if (style.hat === 'helmet') {
+    stroke(
+      ctx,
+      [
+        [x + 3, y - 25],
+        [x + 5, y - 30],
+      ],
+      palette.metalShade,
+      0.8,
+    );
+    oval(ctx, x + 5, y - 30.5, 1.2, 1.2, look.cap);
+    return;
   }
+  if (style.hat === 'crown') {
+    poly(
+      ctx,
+      [
+        [x - 4.2, y - 23],
+        [x + 4.2, y - 23],
+        [x + 4.2, y - 28],
+        [x + 2.1, y - 25.5],
+        [x, y - 28.5],
+        [x - 2.1, y - 25.5],
+        [x - 4.2, y - 28],
+      ],
+      look.cap,
+    );
+    oval(ctx, x, y - 24.3, 0.9, 0.9, palette.red);
+    return;
+  }
+  if (style.hat === 'wizard') {
+    poly(
+      ctx,
+      [
+        [x - 7, y - 23],
+        [x + 7, y - 23],
+        [x + 2.5, y - 24.5],
+        [x - dir * 2, y - 34],
+        [x - 2.5, y - 24.5],
+      ],
+      palette.metalShade,
+    );
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(x, y - 22, 4.4, Math.PI, Math.PI * 2);
+  ctx.fill();
+  if (!options.back)
+    poly(
+      ctx,
+      [
+        [x, y - 22.5],
+        [x + dir * 7, y - 22.5],
+        [x + dir * 7, y - 21.3],
+        [x, y - 21.3],
+      ],
+      look.cap,
+    );
+}
+
+/** The bobbing marker over the player's head. */
+function finishPerson(ctx: Ctx, x: number, y: number, options: { player?: boolean; t?: number }) {
   if (options.player) {
-    const hop = Math.sin((options.t ?? 0) * 5) * 1.5;
+    // Higher over a wizard's hat, so it doesn't sit on the point.
+    const hop = Math.sin((options.t ?? 0) * 5) * 1.5 - (style.hat === 'wizard' ? 6 : 0);
     poly(
       ctx,
       [
@@ -1209,7 +1309,7 @@ function billboard(ctx: Ctx, prop: Prop, t: number) {
 /** How high the top of a bunting pole is. */
 const POLE_HEIGHT = 44;
 
-function buntingPole(ctx: Ctx, prop: Prop) {
+function buntingPole(ctx: Ctx, prop: Prop, t: number) {
   const [x, y] = at(prop.x + 0.5, prop.y + 0.5);
   oval(ctx, x + 2, y + 1, 4, 1.6, palette.shadow);
   poly(
@@ -1220,8 +1320,9 @@ function buntingPole(ctx: Ctx, prop: Prop) {
       [x + 1.3, y - POLE_HEIGHT],
       [x - 1.3, y - POLE_HEIGHT],
     ],
-    palette.cream,
+    style.torches ? palette.wood : palette.cream,
   );
+  if (style.torches) return torch(ctx, x, y - POLE_HEIGHT, t + prop.x * 1.7 + prop.y);
   for (let z = 4; z < POLE_HEIGHT; z += 8)
     poly(
       ctx,
@@ -1234,6 +1335,32 @@ function buntingPole(ctx: Ctx, prop: Prop) {
       palette.red,
     );
   knob(ctx, x, y - POLE_HEIGHT - 1);
+}
+
+/** A burning torch on top of a pole, flickering. */
+function torch(ctx: Ctx, x: number, y: number, t: number) {
+  poly(
+    ctx,
+    [
+      [x - 3, y + 2],
+      [x + 3, y + 2],
+      [x + 2, y + 6],
+      [x - 2, y + 6],
+    ],
+    palette.metalShade,
+  );
+  const flicker = Math.sin(t * 13) * 0.8 + Math.sin(t * 7.3) * 0.6;
+  ctx.globalAlpha *= 0.25;
+  oval(ctx, x, y - 3, 9, 9, palette.flame);
+  ctx.globalAlpha /= 0.25;
+  ctx.fillStyle = palette.flame;
+  ctx.beginPath();
+  ctx.moveTo(x - 3.5, y + 2);
+  ctx.quadraticCurveTo(x - 3.5, y - 5, x + flicker, y - 10);
+  ctx.quadraticCurveTo(x + 3.5, y - 5, x + 3.5, y + 2);
+  ctx.closePath();
+  ctx.fill();
+  oval(ctx, x + flicker * 0.4, y - 1, 1.8, 3, palette.flameCore);
 }
 
 /** Bunting between the poles, skipping any strung outside the view. */
@@ -1389,10 +1516,15 @@ function target(ctx: Ctx, r: number) {
   });
 }
 
-function booth(ctx: Ctx, slot: BoothSlot, name: string, t: number, glow: boolean) {
-  const open = slot.gameId !== undefined;
-  const schemes = boothSchemes();
-  const scheme = open ? schemes[slot.index % schemes.length] : closedScheme();
+interface Scheme {
+  wall: string;
+  wallShade: string;
+  awning: readonly string[];
+  awningShade: readonly string[];
+}
+
+/** The classic carnival stall: a box with a window, a counter and striped awnings. */
+function stall(ctx: Ctx, slot: BoothSlot, scheme: Scheme, open: boolean, t: number) {
   const x0 = slot.x + 0.15;
   const y0 = slot.y + 0.15;
   const s = 1.7;
@@ -1511,17 +1643,27 @@ function booth(ctx: Ctx, slot: BoothSlot, name: string, t: number, glow: boolean
     2.5,
     scheme.awning,
   );
+}
+
+function booth(ctx: Ctx, slot: BoothSlot, name: string, t: number, glow: boolean) {
+  const open = slot.gameId !== undefined;
+  const schemes = boothSchemes();
+  const scheme: Scheme = open ? schemes[slot.index % schemes.length] : closedScheme();
+  if (style.booth === 'pod') pod(ctx, slot, scheme, open, t);
+  else if (style.booth === 'keep') keep(ctx, slot, scheme, open, t);
+  else if (style.booth === 'smial') smial(ctx, slot, scheme, open, t);
+  else stall(ctx, slot, scheme, open, t);
 
   // The sign on the roof, with the game's name on it.
-  const signAt = at(x0 + s / 2, y0 + s / 2, BOOTH_SIGN_HEIGHT - 6);
+  const signAt = at(slot.x + 1, slot.y + 1, BOOTH_SIGN_HEIGHT - 6);
   onPlane(ctx, signAt, () => {
-    ctx.fillStyle = palette.woodDark;
+    ctx.fillStyle = style.booth === 'pod' ? palette.metalShade : palette.woodDark;
     ctx.fillRect(-20, 2, 2, 12);
     ctx.fillRect(18, 2, 2, 12);
     if (open) {
       ctx.save();
       ctx.translate(0, -18);
-      target(ctx, 9);
+      emblem(ctx, 9, t);
       ctx.restore();
     }
     signBoard(
@@ -1545,6 +1687,700 @@ function booth(ctx: Ctx, slot: BoothSlot, name: string, t: number, glow: boolean
   });
 }
 
+// ── Themed booths ─────────────────────────────────────────────────────────
+
+/** Stripes in one colour, for things that are smooth rather than striped. */
+const plain = (a: string, aShade: string): Stripes => ({ a, aShade, b: a, bShade: aShade });
+
+/** Little prizes in a row along a booth's window, between two ground points. */
+function prizes(ctx: Ctx, a: Point, b: Point, z: number, slot: BoothSlot, t: number, side = 0) {
+  for (let i = 0; i < 3; i++) {
+    const p = at(lerp(a.x, b.x, (i + 0.5) / 3), lerp(a.y, b.y, (i + 0.5) / 3), z);
+    const hop = Math.sin(t * 2 + i + slot.index + side) > 0.9 ? 1.5 : 0;
+    oval(
+      ctx,
+      p[0],
+      p[1] - hop,
+      2.4,
+      2.4,
+      palette.balloons[(i + side + slot.index) % palette.balloons.length],
+    );
+  }
+}
+
+/** A space pod: a round cabin with a porthole counter, a glass dome and a blinking aerial. */
+function pod(ctx: Ctx, slot: BoothSlot, scheme: Scheme, open: boolean, t: number) {
+  const c = at(slot.x + 1, slot.y + 1);
+  const r = 0.85;
+  oval(ctx, c[0] + 6, c[1] + 3, r * ISO_RX * 1.15, r * ISO_RY * 1.15, palette.shadow);
+  // Landing legs.
+  for (const angle of [0.3, Math.PI / 2, Math.PI - 0.3]) {
+    const foot = rimPoint(c, r * 1.2, angle, 0);
+    stroke(ctx, [foot, rimPoint(c, r, angle, 10)], palette.metalShade, 2);
+  }
+  cylinder(ctx, c, r, 6, 24, { ...plain(scheme.wall, scheme.wallShade) }, 16);
+  cylinder(ctx, c, r * 1.02, 26, 3, plain(palette.metal, palette.metalShade), 16);
+  // The counter: a wide porthole on the front.
+  const hatch = rimPoint(c, r, Math.PI / 2, 17);
+  ctx.fillStyle = palette.metalShade;
+  ctx.beginPath();
+  ctx.ellipse(hatch[0], hatch[1], 12, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  oval(ctx, hatch[0], hatch[1], 10, 5.5, open ? palette.opening : palette.closedShade);
+  if (open) {
+    for (let i = 0; i < 3; i++)
+      oval(
+        ctx,
+        hatch[0] - 5 + i * 5,
+        hatch[1] + 2,
+        2,
+        2,
+        palette.balloons[(i + slot.index) % palette.balloons.length],
+      );
+  }
+  // The glass dome on top.
+  const top = at(slot.x + 1, slot.y + 1, 29);
+  ctx.fillStyle = palette.sky2;
+  ctx.globalAlpha *= 0.8;
+  ctx.beginPath();
+  ctx.ellipse(top[0], top[1], r * ISO_RX * 0.8, 12, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha /= 0.8;
+  oval(ctx, top[0] - 6, top[1] - 7, 3, 2, palette.white);
+  stroke(
+    ctx,
+    [
+      [top[0] + 10, top[1] - 4],
+      [top[0] + 14, top[1] - 16],
+    ],
+    palette.metalShade,
+    1.2,
+  );
+  oval(
+    ctx,
+    top[0] + 14,
+    top[1] - 17,
+    1.8,
+    1.8,
+    open && Math.sin(t * 6 + slot.index) > 0 ? palette.red : palette.redShade,
+  );
+}
+
+/** Battlements along the top of a wall, from one ground point to another. */
+function crenels(ctx: Ctx, a: Point, b: Point, z: number, count: number, front: string) {
+  for (let i = 0; i < count; i += 2) {
+    const s0 = i / count;
+    const s1 = (i + 1) / count;
+    poly(
+      ctx,
+      [
+        at(lerp(a.x, b.x, s0), lerp(a.y, b.y, s0), z),
+        at(lerp(a.x, b.x, s1), lerp(a.y, b.y, s1), z),
+        at(lerp(a.x, b.x, s1), lerp(a.y, b.y, s1), z + 5),
+        at(lerp(a.x, b.x, s0), lerp(a.y, b.y, s0), z + 5),
+      ],
+      front,
+    );
+  }
+}
+
+/** A stone keep with battlements, an arched counter and its house's banner. */
+function keep(ctx: Ctx, slot: BoothSlot, scheme: Scheme, open: boolean, t: number) {
+  const x0 = slot.x + 0.2;
+  const y0 = slot.y + 0.2;
+  const s = 1.6;
+  const x1 = x0 + s;
+  const y1 = y0 + s;
+  const wall = BOOTH_WALL - 4;
+  poly(ctx, rectPoints({ x: x0 + 0.35, y: y0 + 0.35, w: s, h: s }), palette.shadow);
+  box(ctx, x0, y0, s, s, 0, wall, palette.stone, palette.stone, palette.stoneShade);
+  // Mortar lines.
+  for (let z = 6; z < wall; z += 6) {
+    stroke(ctx, [at(x0, y1, z), at(x1, y1, z), at(x1, y0, z)], palette.stoneDark, 0.5);
+  }
+  // An arched counter on the front, and an arrow slit on the side.
+  onPlane(ctx, at(x0 + s / 2, y1, 8), () => {
+    ctx.fillStyle = palette.opening;
+    ctx.beginPath();
+    ctx.moveTo(-9, 0);
+    ctx.lineTo(-9, -8);
+    ctx.arc(0, -8, 9, Math.PI, Math.PI * 2);
+    ctx.lineTo(9, 0);
+    ctx.closePath();
+    ctx.fill();
+    if (!open) {
+      ctx.fillStyle = palette.woodDark;
+      ctx.fillRect(-9, -10, 18, 10);
+    }
+  });
+  if (open)
+    prizes(ctx, { x: x0 + s / 2 - 0.35, y: y1 }, { x: x0 + s / 2 + 0.35, y: y1 }, 9, slot, t);
+  poly(
+    ctx,
+    [at(x1, y0 + 0.75, 12), at(x1, y0 + 0.85, 12), at(x1, y0 + 0.85, 22), at(x1, y0 + 0.75, 22)],
+    palette.opening,
+  );
+  // The house banner hanging down the side.
+  const banner = [
+    at(x1, y0 + 0.25, wall - 1),
+    at(x1, y0 + 0.55, wall - 1),
+    at(x1, y0 + 0.55, wall - 16),
+    at(x1, y0 + 0.4, wall - 13),
+    at(x1, y0 + 0.25, wall - 16),
+  ];
+  poly(ctx, banner, scheme.wall);
+  oval(ctx, ...at(x1, y0 + 0.4, wall - 7), 1.6, 2, palette.gold);
+  // Battlements.
+  box(ctx, x0, y0, s, s, wall, 0, palette.stoneShade, palette.stone, palette.stoneShade);
+  crenels(ctx, { x: x0, y: y0 }, { x: x1, y: y0 }, wall, 9, palette.stoneShade);
+  crenels(ctx, { x: x0, y: y0 }, { x: x0, y: y1 }, wall, 9, palette.stoneShade);
+  crenels(ctx, { x: x1, y: y1 }, { x: x1, y: y0 }, wall, 9, palette.stoneShade);
+  crenels(ctx, { x: x0, y: y1 }, { x: x1, y: y1 }, wall, 9, palette.stone);
+  if (open) {
+    const pole = at(x0 + 0.2, y0 + 0.2, wall);
+    flag(ctx, pole[0], pole[1], t + slot.index, scheme.wall, 0.9);
+  }
+}
+
+/** A round door with a brass knob, on the plane facing down-left. */
+function roundDoor(ctx: Ctx, origin: Pt, r: number, color: string, open: boolean) {
+  onPlane(ctx, origin, () => {
+    ctx.fillStyle = palette.woodDark;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = open ? color : palette.closed;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    oval(ctx, 0, 0, 1.2, 1.2, palette.gold);
+  });
+}
+
+/** A grassy mound with a round door, the way people live in the Shire. */
+function mound(ctx: Ctx, c: Pt, r: number, h: number) {
+  oval(ctx, c[0] + 6, c[1] + 3, r * ISO_RX * 1.1, r * ISO_RY * 1.1, palette.shadow);
+  cylinder(ctx, c, r, 0, 6, plain(palette.stone, palette.stoneShade), 16);
+  dome(ctx, c, r * 1.04, 6, h, plain(palette.hedge, palette.hedgeDark), 0, 16);
+  // A few flowers on the turf.
+  for (let i = 0; i < 5; i++) {
+    const p = rimPoint(c, r * 0.6, 0.4 + i * 0.6, h * 0.55);
+    oval(ctx, p[0], p[1], 1.2, 1.2, i % 2 ? palette.gold : palette.pink);
+  }
+}
+
+/** A smial: a booth dug into a little hill, with a round door and round windows. */
+function smial(ctx: Ctx, slot: BoothSlot, scheme: Scheme, open: boolean, t: number) {
+  const c = at(slot.x + 1, slot.y + 1);
+  const r = 0.9;
+  mound(ctx, c, r, 30);
+  roundDoor(ctx, rimPoint(c, r, Math.PI / 2, 13), 9, scheme.wall, open);
+  for (const angle of [0.55, Math.PI - 0.55]) {
+    const w = rimPoint(c, r, angle, 16);
+    oval(ctx, w[0], w[1], 3.5, 3.5, palette.woodDark);
+    oval(
+      ctx,
+      w[0],
+      w[1],
+      2.5,
+      2.5,
+      open && Math.sin(t * 1.5 + angle + slot.index) > -0.6 ? palette.flameCore : palette.opening,
+    );
+  }
+  // A chimney.
+  const chimney = at(slot.x + 0.7, slot.y + 0.6, 30);
+  box(
+    ctx,
+    slot.x + 0.6,
+    slot.y + 0.5,
+    0.2,
+    0.2,
+    26,
+    8,
+    palette.stone,
+    palette.stoneShade,
+    palette.stoneDark,
+  );
+  if (open) {
+    const puff = (t * 0.6 + slot.index * 0.3) % 1;
+    ctx.save();
+    ctx.globalAlpha *= 1 - puff;
+    oval(
+      ctx,
+      chimney[0] + puff * 4,
+      chimney[1] - 12 - puff * 12,
+      2 + puff * 3,
+      2 + puff * 3,
+      palette.cloud,
+    );
+    ctx.restore();
+  }
+}
+
+/** The picture over each open booth's sign. */
+function emblem(ctx: Ctx, r: number, t: number) {
+  if (style.emblem === 'planet') {
+    oval(ctx, 0, 0, r * 0.75, r * 0.75, palette.pink);
+    oval(ctx, -r * 0.2, -r * 0.25, r * 0.25, r * 0.2, palette.pinkShade);
+    ctx.strokeStyle = palette.gold;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 1.25, r * 0.35, -0.3, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+  if (style.emblem === 'shield') {
+    const shield = () => {
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.8, -r);
+      ctx.lineTo(r * 0.8, -r);
+      ctx.lineTo(r * 0.8, -r * 0.1);
+      ctx.quadraticCurveTo(r * 0.7, r * 0.7, 0, r);
+      ctx.quadraticCurveTo(-r * 0.7, r * 0.7, -r * 0.8, -r * 0.1);
+      ctx.closePath();
+    };
+    ctx.fillStyle = palette.gold;
+    shield();
+    ctx.fill();
+    ctx.save();
+    ctx.scale(0.8, 0.8);
+    ctx.fillStyle = palette.red;
+    shield();
+    ctx.fill();
+    ctx.restore();
+    oval(ctx, 0, -r * 0.15, r * 0.25, r * 0.25, palette.gold);
+    return;
+  }
+  if (style.emblem === 'ring') {
+    ctx.save();
+    ctx.globalAlpha *= 0.35 + Math.max(0, Math.sin(t * 2)) * 0.35;
+    oval(ctx, 0, 0, r * 1.1, r * 1.1, palette.flameCore);
+    ctx.restore();
+    ctx.strokeStyle = palette.goldShade;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, r * 0.7, r * 0.55, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = palette.gold;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    return;
+  }
+  target(ctx, r);
+}
+
+// ── Themed landmarks and tents ────────────────────────────────────────────
+
+/** A rocket on its launchpad, beside its gantry, venting before lift-off. */
+function rocket(ctx: Ctx, prop: Prop, t: number) {
+  const cx = prop.x + prop.w / 2;
+  const cy = prop.y + prop.h / 2;
+  const c = at(cx, cy);
+  oval(ctx, c[0] + 8, c[1] + 4, 1.9 * ISO_RX, 1.9 * ISO_RY, palette.shadow);
+  // The pad.
+  box(ctx, cx - 1.5, cy - 1.5, 3, 3, 0, 6, palette.metalShade, palette.metal, palette.metalShade);
+  for (let i = 0; i < 6; i++) {
+    const p = rimPoint(c, 1.6, (i / 5) * Math.PI, 6);
+    oval(ctx, p[0], p[1], 1.2, 1.2, Math.sin(t * 3 - i) > 0 ? palette.gold : palette.goldShade);
+  }
+  // The gantry, behind and to the left.
+  const g0 = at(cx - 1.1, cy - 0.9, 6);
+  const height = 92;
+  for (const dx of [-5, 5])
+    stroke(
+      ctx,
+      [
+        [g0[0] + dx, g0[1]],
+        [g0[0] + dx, g0[1] - height],
+      ],
+      palette.red,
+      2,
+    );
+  for (let z = 0; z < height; z += 10)
+    stroke(
+      ctx,
+      [
+        [g0[0] - 5, g0[1] - z],
+        [g0[0] + 5, g0[1] - z - 10],
+      ],
+      palette.redShade,
+      1,
+    );
+  stroke(
+    ctx,
+    [
+      [g0[0], g0[1] - height + 18],
+      [c[0] - 4, c[1] - height + 14],
+    ],
+    palette.redShade,
+    2,
+  );
+
+  // Exhaust and smoke under the engines.
+  if (Math.sin(t * 9) > -0.5) {
+    poly(
+      ctx,
+      [
+        [c[0] - 6, c[1] - 10],
+        [c[0] + 6, c[1] - 10],
+        [c[0], c[1] - 1 + Math.sin(t * 20) * 2],
+      ],
+      palette.flame,
+    );
+    poly(
+      ctx,
+      [
+        [c[0] - 3, c[1] - 10],
+        [c[0] + 3, c[1] - 10],
+        [c[0], c[1] - 5],
+      ],
+      palette.flameCore,
+    );
+  }
+  ctx.save();
+  const alpha = ctx.globalAlpha;
+  for (let i = 0; i < 5; i++) {
+    const drift = (t * 0.4 + i / 5) % 1;
+    const side = i % 2 ? 1 : -1;
+    ctx.globalAlpha = alpha * 0.7 * (1 - drift);
+    oval(
+      ctx,
+      c[0] + side * (8 + drift * 26),
+      c[1] - 6 - drift * 6,
+      5 + drift * 7,
+      3 + drift * 4,
+      palette.cloud,
+    );
+  }
+  ctx.restore();
+
+  // The body: a white cylinder with a band, a porthole and fins.
+  const r = 0.55;
+  const z0 = 10;
+  const body = 64;
+  cylinder(ctx, c, r, z0, body, plain(palette.cream, palette.creamShade), 16);
+  cylinder(ctx, c, r * 1.01, z0 + 38, 7, plain(palette.blue, palette.blueShade), 16);
+  for (const dir of [-1, 1]) {
+    const root = c[0] + dir * r * ISO_RX;
+    poly(
+      ctx,
+      [
+        [root, c[1] - z0 - 22],
+        [root + dir * 10, c[1] - z0 + 2],
+        [root + dir * 10, c[1] - z0 + 8],
+        [root, c[1] - z0 + 2],
+      ],
+      palette.red,
+    );
+  }
+  poly(
+    ctx,
+    [
+      [c[0] - 2, c[1] - z0 - 20],
+      [c[0] + 2, c[1] - z0 - 20],
+      [c[0] + 2, c[1] - z0 + 10],
+      [c[0] - 2, c[1] - z0 + 10],
+    ],
+    palette.redShade,
+  );
+  const port = rimPoint(c, r, Math.PI / 2, z0 + 28);
+  oval(ctx, port[0], port[1], 5, 5, palette.metalShade);
+  oval(ctx, port[0], port[1], 3.6, 3.6, palette.sky2);
+  oval(ctx, port[0] - 1, port[1] - 1, 1.2, 1.2, palette.white);
+  dome(ctx, c, r, z0 + body, 30, plain(palette.red, palette.redShade), 0, 12);
+  const tip = c[1] - z0 - body - 30;
+  oval(ctx, c[0], tip, 1.6, 1.6, Math.sin(t * 6) > 0 ? palette.gold : palette.goldShade);
+}
+
+/** A round stone tower with a pointed roof and a pennant, for the castle. */
+function tower(ctx: Ctx, x: number, y: number, h: number, t: number) {
+  const c = at(x, y);
+  oval(ctx, c[0] + 5, c[1] + 2, 0.5 * ISO_RX, 0.5 * ISO_RY, palette.shadow);
+  cylinder(ctx, c, 0.45, 0, h, plain(palette.stone, palette.stoneShade), 12);
+  const slit = rimPoint(c, 0.45, Math.PI / 2, h * 0.6);
+  poly(
+    ctx,
+    [
+      [slit[0] - 1, slit[1]],
+      [slit[0] + 1, slit[1]],
+      [slit[0] + 1, slit[1] - 7],
+      [slit[0] - 1, slit[1] - 7],
+    ],
+    palette.opening,
+  );
+  dome(ctx, c, 0.55, h, 24, plain(palette.red, palette.redShade), 0, 12);
+  const apex = c[1] - h - 24;
+  flag(ctx, c[0], apex, t + x, palette.gold);
+}
+
+/** A castle of grey stone: four towers round a keep, with a gate and banners. */
+function castle(ctx: Ctx, prop: Prop, t: number) {
+  const x0 = prop.x + 0.45;
+  const y0 = prop.y + 0.45;
+  const x1 = prop.x + prop.w - 0.45;
+  const y1 = prop.y + prop.h - 0.45;
+  const wall = 32;
+  poly(ctx, rectPoints({ x: x0 + 0.4, y: y0 + 0.4, w: x1 - x0, h: y1 - y0 }), palette.shadow);
+  tower(ctx, x0, y0, 54, t);
+  // The curtain walls, round a courtyard.
+  box(
+    ctx,
+    x0,
+    y0,
+    x1 - x0,
+    y1 - y0,
+    0,
+    wall,
+    palette.stoneShade,
+    palette.stone,
+    palette.stoneShade,
+  );
+  // The keep, rising from the courtyard above the walls.
+  const k = 0.75;
+  const keepTop = 62;
+  box(
+    ctx,
+    x0 + k,
+    y0 + k,
+    x1 - x0 - 2 * k,
+    y1 - y0 - 2 * k,
+    wall,
+    keepTop - wall,
+    palette.stoneShade,
+    palette.stone,
+    palette.stoneShade,
+  );
+  crenels(ctx, { x: x0 + k, y: y1 - k }, { x: x1 - k, y: y1 - k }, keepTop, 7, palette.stone);
+  crenels(ctx, { x: x1 - k, y: y1 - k }, { x: x1 - k, y: y0 + k }, keepTop, 7, palette.stoneShade);
+  for (let i = 0; i < 2; i++) {
+    const w = at(x0 + k + 0.4 + i * 0.9, y1 - k, 48);
+    poly(
+      ctx,
+      [
+        [w[0] - 1.5, w[1]],
+        [w[0] + 1.5, w[1]],
+        [w[0] + 1.5, w[1] - 7],
+        [w[0] - 1.5, w[1] - 7],
+      ],
+      palette.opening,
+    );
+  }
+  const top = at((x0 + x1) / 2, (y0 + y1) / 2, keepTop);
+  flag(ctx, top[0], top[1], t, palette.red, 1.5);
+  crenels(ctx, { x: x0, y: y1 }, { x: x1, y: y1 }, wall, 13, palette.stone);
+  crenels(ctx, { x: x1, y: y1 }, { x: x1, y: y0 }, wall, 13, palette.stoneShade);
+  // The gate, on the side facing the avenue, with its portcullis.
+  onPlane(ctx, at(x0 + (x1 - x0) / 2, y1, 0), () => {
+    ctx.fillStyle = palette.opening;
+    ctx.beginPath();
+    ctx.moveTo(-9, 0);
+    ctx.lineTo(-9, -14);
+    ctx.arc(0, -14, 9, Math.PI, Math.PI * 2);
+    ctx.lineTo(9, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = palette.metalShade;
+    ctx.lineWidth = 1;
+    for (let i = -6; i <= 6; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, -20);
+      ctx.stroke();
+    }
+  });
+  // Banners hanging from the walls.
+  for (const s of [0.2, 0.8]) {
+    const bx = lerp(x0, x1, s);
+    poly(
+      ctx,
+      [
+        at(bx - 0.15, y1, wall - 1),
+        at(bx + 0.15, y1, wall - 1),
+        at(bx + 0.15, y1, wall - 18),
+        at(bx, y1, wall - 14),
+        at(bx - 0.15, y1, wall - 18),
+      ],
+      palette.red,
+    );
+    oval(ctx, ...at(bx, y1, wall - 8), 2, 2.4, palette.gold);
+  }
+  tower(ctx, x1, y0, 54, t + 1);
+  tower(ctx, x0, y1, 54, t + 2);
+  tower(ctx, x1, y1, 54, t + 3);
+}
+
+/** The Party Tree: a great old tree hung with lanterns, a pavilion under it. */
+function partyTree(ctx: Ctx, prop: Prop, t: number) {
+  const cx = prop.x + prop.w / 2;
+  const cy = prop.y + prop.h / 2;
+  const c = at(cx, cy);
+  oval(ctx, c[0] + 12, c[1] + 5, 2 * ISO_RX, 2 * ISO_RY, palette.shadow);
+  // The trunk, and roots spreading over the grass.
+  for (const dx of [-12, 12])
+    stroke(
+      ctx,
+      [
+        [c[0], c[1] - 10],
+        [c[0] + dx, c[1] + 2],
+      ],
+      palette.woodDark,
+      4,
+    );
+  poly(
+    ctx,
+    [
+      [c[0] - 7, c[1]],
+      [c[0] + 7, c[1]],
+      [c[0] + 4, c[1] - 52],
+      [c[0] - 4, c[1] - 52],
+    ],
+    palette.wood,
+  );
+  poly(
+    ctx,
+    [
+      [c[0] + 2, c[1]],
+      [c[0] + 7, c[1]],
+      [c[0] + 4, c[1] - 52],
+      [c[0] + 1, c[1] - 52],
+    ],
+    palette.woodDark,
+  );
+  for (const dir of [-1, 1])
+    stroke(
+      ctx,
+      [
+        [c[0], c[1] - 46],
+        [c[0] + dir * 24, c[1] - 62],
+      ],
+      palette.wood,
+      3.5,
+    );
+  // The canopy.
+  const leaves: [number, number, number, string][] = [
+    [-30, -66, 22, palette.hedgeDark],
+    [30, -66, 22, palette.hedgeDark],
+    [0, -88, 30, palette.hedgeDark],
+    [-18, -78, 22, palette.hedge],
+    [18, -80, 22, palette.hedge],
+    [0, -70, 22, palette.hedge],
+    [-10, -96, 14, palette.hedgeLight],
+    [14, -92, 10, palette.hedgeLight],
+  ];
+  for (const [dx, dy, r, color] of leaves) oval(ctx, c[0] + dx, c[1] + dy, r, r * 0.8, color);
+  // Lanterns on strings round the canopy.
+  for (let i = 0; i < 9; i++) {
+    const angle = (i / 8) * Math.PI;
+    const lx = c[0] + Math.cos(angle) * 40;
+    const ly = c[1] - 56 + Math.sin(angle) * 10;
+    stroke(
+      ctx,
+      [
+        [lx, ly - 6],
+        [lx, ly],
+      ],
+      palette.woodDark,
+      0.6,
+    );
+    const lit = Math.sin(t * 2.5 + i * 1.7) > -0.4;
+    oval(ctx, lx, ly + 2, 2.4, 3, lit ? palette.flameCore : palette.flame);
+  }
+  // A little striped pavilion under the boughs.
+  roundTent(ctx, cx + 0.9, cy + 0.9, 0.7, 12, 12, RED(), t, palette.gold);
+}
+
+/** A space habitat: a low white drum under a glass-ribbed dome, with an airlock. */
+function habitat(ctx: Ctx, cx: number, cy: number, r: number, t: number) {
+  const c = at(cx, cy);
+  oval(ctx, c[0] + 8, c[1] + 4, r * ISO_RX * 1.15, r * ISO_RY * 1.15, palette.shadow);
+  cylinder(ctx, c, r, 0, 16, plain(palette.metal, palette.metalShade), 20);
+  dome(
+    ctx,
+    c,
+    r,
+    16,
+    34,
+    { a: palette.cream, aShade: palette.creamShade, b: palette.sky2, bShade: palette.blue },
+    0,
+    16,
+  );
+  const door = rimPoint(c, r, Math.PI / 2, 0);
+  ctx.fillStyle = palette.metalShade;
+  ctx.beginPath();
+  ctx.roundRect(door[0] - 7, door[1] - 18, 14, 18, [6, 6, 0, 0]);
+  ctx.fill();
+  ctx.fillStyle = palette.opening;
+  ctx.beginPath();
+  ctx.roundRect(door[0] - 5, door[1] - 16, 10, 16, [5, 5, 0, 0]);
+  ctx.fill();
+  for (const angle of [0.6, Math.PI - 0.6]) {
+    const w = rimPoint(c, r, angle, 9);
+    oval(ctx, w[0], w[1], 3, 3, palette.metalShade);
+    oval(ctx, w[0], w[1], 2, 2, Math.sin(t + angle) > 0 ? palette.flameCore : palette.sky2);
+  }
+  // A dish on the roof.
+  const top: Pt = [c[0], c[1] - 16 - 34];
+  stroke(ctx, [top, [top[0], top[1] - 8]], palette.metalShade, 1.4);
+  ctx.save();
+  ctx.translate(top[0], top[1] - 10);
+  ctx.rotate(Math.sin(t * 0.5) * 0.5);
+  ctx.fillStyle = palette.metal;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 7, 3, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A hobbit hole in a grassy hill, with a round door in its own colour. */
+function hobbitHole(ctx: Ctx, cx: number, cy: number, r: number, variant: number, t: number) {
+  const c = at(cx, cy);
+  mound(ctx, c, r, 34);
+  const doors = [palette.blue, palette.gold, palette.red];
+  roundDoor(ctx, rimPoint(c, r, Math.PI / 2, 13), 11, doors[variant % doors.length], true);
+  for (const angle of [0.6, Math.PI - 0.6]) {
+    const w = rimPoint(c, r, angle, 15);
+    oval(ctx, w[0], w[1], 4.5, 4.5, palette.woodDark);
+    oval(
+      ctx,
+      w[0],
+      w[1],
+      3.4,
+      3.4,
+      Math.sin(t + angle + variant) > -0.5 ? palette.flameCore : palette.opening,
+    );
+  }
+  // A garden gate's posts in front.
+  const gate = rimPoint(c, r * 1.3, Math.PI / 2, 0);
+  for (const dx of [-12, 12])
+    stroke(
+      ctx,
+      [
+        [gate[0] + dx, gate[1]],
+        [gate[0] + dx, gate[1] - 8],
+      ],
+      palette.wood,
+      2,
+    );
+  stroke(
+    ctx,
+    [
+      [gate[0] - 12, gate[1] - 6],
+      [gate[0] - 6, gate[1] - 4],
+    ],
+    palette.woodLight,
+    1.4,
+  );
+  stroke(
+    ctx,
+    [
+      [gate[0] + 12, gate[1] - 6],
+      [gate[0] + 6, gate[1] - 4],
+    ],
+    palette.woodLight,
+    1.4,
+  );
+}
+
 // ── Bounds, for clicks and for fading things in front of the player ───────
 
 export interface Box {
@@ -1561,7 +2397,8 @@ export function boothBounds(slot: BoothSlot): Box {
 }
 
 const PROP_HEIGHTS: Record<Prop['kind'], number> = {
-  'big-top': 100,
+  // Tall enough for every theme's landmark: the rocket is the tallest.
+  'big-top': 120,
   'round-tent': 80,
   'peaked-tent': 56,
   'ferris-wheel': 150,
@@ -1655,9 +2492,9 @@ export function drawArch(ctx: Ctx, map: MidwayMap, t: number) {
       0.26,
       0,
       ARCH_HEIGHT,
-      palette.woodLight,
-      palette.wood,
-      palette.woodDark,
+      ...(style.booth === 'pod'
+        ? ([palette.metal, palette.metalShade, palette.blueShade] as const)
+        : ([palette.woodLight, palette.wood, palette.woodDark] as const)),
     );
   const centre = at((left + right + 0.26) / 2, y, ARCH_HEIGHT + 2);
   onPlane(ctx, centre, () => {
@@ -1669,7 +2506,7 @@ export function drawArch(ctx: Ctx, map: MidwayMap, t: number) {
     ctx.beginPath();
     ctx.ellipse(0, -10, 12, 9, 0, Math.PI, Math.PI * 2);
     ctx.fill();
-    signBoard(ctx, 'TESSL CARNIVAL', 92, 20, {
+    signBoard(ctx, style.gate, 92, 20, {
       board: palette.wood,
       edge: palette.woodDark,
       text: palette.gold,
@@ -1710,6 +2547,19 @@ export function drawCloud(ctx: Ctx, x: number, y: number, size: number) {
   ctx.fill();
 }
 
+/** Stars twinkling in a night sky, in screen pixels across the view. */
+export function drawStars(ctx: Ctx, width: number, height: number, t: number) {
+  if (!style.stars) return;
+  for (let i = 0; i < 90; i++) {
+    const x = hash(i, 3) * width;
+    const y = hash(i, 5) * height;
+    const twinkle = 0.45 + 0.55 * Math.abs(Math.sin(t * (0.6 + hash(i, 7)) + i));
+    ctx.globalAlpha = twinkle;
+    oval(ctx, x, y, 0.6 + hash(i, 9), 0.6 + hash(i, 9), palette.white);
+  }
+  ctx.globalAlpha = 1;
+}
+
 export interface Floater {
   x: number;
   y: number;
@@ -1717,11 +2567,64 @@ export interface Floater {
   color: string;
 }
 
-/** Balloons someone let go of, drifting up into the sky. */
+/** A little flying saucer, with blinking lights round its rim. */
+function ufo(ctx: Ctx, x: number, y: number, age: number, color: string) {
+  oval(ctx, x, y - 2, 4, 3.5, palette.sky2);
+  oval(ctx, x, y, 9, 2.6, palette.metal);
+  oval(ctx, x, y + 1, 9, 1.4, palette.metalShade);
+  for (let i = 0; i < 3; i++)
+    oval(
+      ctx,
+      x - 5 + i * 5,
+      y + 0.4,
+      0.9,
+      0.9,
+      Math.sin(age * 8 + i * 2) > 0 ? color : palette.white,
+    );
+}
+
+/** A raven flapping off over the walls. */
+function raven(ctx: Ctx, x: number, y: number, age: number) {
+  const flap = Math.sin(age * 9) * 4;
+  ctx.fillStyle = palette.ink;
+  ctx.beginPath();
+  ctx.moveTo(x - 8, y - flap);
+  ctx.quadraticCurveTo(x - 3, y - 2, x, y + 1);
+  ctx.quadraticCurveTo(x + 3, y - 2, x + 8, y - flap);
+  ctx.quadraticCurveTo(x + 3, y + 1, x, y + 3);
+  ctx.quadraticCurveTo(x - 3, y + 1, x - 8, y - flap);
+  ctx.fill();
+}
+
+/** A paper lantern floating up into the evening. */
+function lantern(ctx: Ctx, x: number, y: number, age: number) {
+  ctx.globalAlpha *= 0.3;
+  oval(ctx, x, y, 8, 8, palette.flame);
+  ctx.globalAlpha /= 0.3;
+  ctx.fillStyle = Math.sin(age * 3) > -0.3 ? palette.flameCore : palette.flame;
+  ctx.beginPath();
+  ctx.roundRect(x - 3.5, y - 5, 7, 9, 2);
+  ctx.fill();
+  oval(ctx, x, y + 3, 1.2, 1.2, palette.flame);
+}
+
+/** Things someone let go of, drifting up into the sky: balloons, or the theme's own. */
 export function drawFloaters(ctx: Ctx, floaters: readonly Floater[]) {
   for (const f of floaters) {
     ctx.globalAlpha = Math.max(0, Math.min(1, 6 - f.age));
     const sway = Math.sin(f.age * 2) * 3;
+    if (style.floater === 'ufo') {
+      ufo(ctx, f.x + sway * 4, f.y, f.age, f.color);
+      continue;
+    }
+    if (style.floater === 'raven') {
+      raven(ctx, f.x + f.age * 14, f.y, f.age);
+      continue;
+    }
+    if (style.floater === 'lantern') {
+      lantern(ctx, f.x + sway, f.y, f.age);
+      continue;
+    }
     ctx.strokeStyle = palette.metalShade;
     ctx.lineWidth = 0.8;
     ctx.beginPath();
@@ -1739,13 +2642,20 @@ export function drawFloaters(ctx: Ctx, floaters: readonly Floater[]) {
 export function drawProp(ctx: Ctx, prop: Prop, t: number) {
   switch (prop.kind) {
     case 'big-top':
+      if (style.landmark === 'rocket') return rocket(ctx, prop, t);
+      if (style.landmark === 'castle') return castle(ctx, prop, t);
+      if (style.landmark === 'party-tree') return partyTree(ctx, prop, t);
       return bigTop(ctx, prop, t);
     case 'round-tent': {
+      const cx = prop.x + prop.w / 2;
+      const cy = prop.y + prop.h / 2;
+      if (style.tent === 'dome') return habitat(ctx, cx, cy, 1.45, t);
+      if (style.tent === 'hobbit-hole') return hobbitHole(ctx, cx, cy, 1.6, prop.variant, t);
       const colors = TENT_COLORS[prop.variant % TENT_COLORS.length]();
       return roundTent(
         ctx,
-        prop.x + prop.w / 2,
-        prop.y + prop.h / 2,
+        cx,
+        cy,
         1.55,
         30,
         34,
@@ -1773,7 +2683,7 @@ export function drawProp(ctx: Ctx, prop: Prop, t: number) {
     case 'balloons':
       return balloons(ctx, prop, t);
     case 'bunting-pole':
-      return buntingPole(ctx, prop);
+      return buntingPole(ctx, prop, t);
     case 'billboard':
       return billboard(ctx, prop, t);
   }

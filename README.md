@@ -80,8 +80,13 @@ The carnival is a small browser game. It ships with one game, the **water
 cannon**, and a midway you walk around: a sunny fairground with tents, rides and
 a booth for every game. Empty booths say "coming soon" until a game fills them.
 Pickers in the corner change the season (spring, summer, fall or winter) and
-the theme (the classic carnival, space, Game of Thrones or The Lord of the
-Rings), and the midway remembers your choice.
+the theme, and the midway remembers your choice. Each theme rebuilds the midway,
+not just its colours: the classic carnival has its big top and stalls; space
+has a rocket on its launchpad, space-pod booths, habitat domes, astronauts and
+UFOs under the stars; Game of Thrones has a castle, stone keeps with banners,
+torches, cloaks, a crown and ravens; and The Lord of the Rings has the Party
+Tree, hobbit holes, booths dug into hills, lanterns, a wizard's hat and the One
+Ring. Each theme letters its signs and the gate in its own font.
 
 You grow your carnival by adding games through your factory. Each game lives in
 its own folder, and the midway finds it there, so a new game touches no shared

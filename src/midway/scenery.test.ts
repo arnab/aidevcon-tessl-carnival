@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { palette, sceneryPalette, setScenery } from './palette';
+import { palette, sceneryPalette, setScenery, style, THEME_STYLES, THEMES } from './palette';
 import { DEFAULT_SCENERY, loadScenery, parseScenery, saveScenery } from './scenery';
 
 function memoryStorage() {
@@ -38,6 +38,33 @@ describe('sceneryPalette', () => {
     expect(palette).toEqual(sceneryPalette('fall', 'space'));
     setScenery('summer', 'carnival');
     expect(palette).toEqual(sceneryPalette('summer', 'carnival'));
+  });
+});
+
+describe('theme styles', () => {
+  it('builds every theme from its own booths, landmark, sign font and gate', () => {
+    for (const key of ['booth', 'landmark', 'font', 'gate'] as const) {
+      const values = THEMES.map((theme) => THEME_STYLES[theme][key]);
+      expect(new Set(values).size).toBe(THEMES.length);
+    }
+  });
+
+  it('keeps the classic carnival as it was', () => {
+    expect(THEME_STYLES.carnival).toMatchObject({
+      gate: 'TESSL CARNIVAL',
+      booth: 'stall',
+      landmark: 'big-top',
+      floater: 'balloon',
+    });
+  });
+
+  it('rebuilds the live style with the theme, whatever the season', () => {
+    setScenery('winter', 'got');
+    expect(style).toEqual(THEME_STYLES.got);
+    setScenery('spring', 'space');
+    expect(style).toEqual(THEME_STYLES.space);
+    setScenery('summer', 'carnival');
+    expect(style).toEqual(THEME_STYLES.carnival);
   });
 });
 
