@@ -1,4 +1,4 @@
-import { palette } from './palette';
+import { palette, setScenery, type Season, type Theme } from './palette';
 import {
   archBounds,
   BOOTH_SIGN_HEIGHT,
@@ -16,7 +16,7 @@ import {
   groundBounds,
   HORIZON,
   label,
-  PLAYER_LOOK,
+  playerLook,
   propBounds,
   visitorLook,
   type Box,
@@ -54,6 +54,8 @@ export interface MidwayOptions {
 export interface MidwayControls {
   /** Walks the player to a game's booth. */
   walkTo(gameId: string): void;
+  /** Repaints the midway for a season and a theme. */
+  setScenery(season: Season, theme: Theme): void;
   stop(): void;
 }
 
@@ -151,7 +153,9 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     target instanceof HTMLElement && target.closest('a, button, input, textarea, select') !== null;
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.code in MOVE_KEYS) {
+    // Arrow keys in the scenery pickers choose an option, not a step.
+    const choosing = event.target instanceof HTMLSelectElement;
+    if (event.code in MOVE_KEYS && !choosing) {
       keys.add(event.code);
       player.path = [];
       destination = undefined;
@@ -357,7 +361,7 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
       {
         depth: playerDepth,
         box: walkerBox(player),
-        draw: () => drawWalker(ctx, player, PLAYER_LOOK, true, t),
+        draw: () => drawWalker(ctx, player, playerLook(), true, t),
       },
     ];
     for (const item of scenery) {
@@ -439,6 +443,11 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     walkTo(gameId) {
       const booth = map.booths.find((b) => b.gameId === gameId);
       if (booth) walkToBooth(booth);
+    },
+    setScenery(season, theme) {
+      setScenery(season, theme);
+      // The ground layer is drawn once, so draw it again in the new colours.
+      ground = drawGroundLayer(map, zoom * dpr);
     },
     stop() {
       cancelAnimationFrame(frame);

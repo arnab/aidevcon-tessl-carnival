@@ -2,6 +2,8 @@ import './style.css';
 import { applyTheme, bestScore, type CarnivalGame } from './carnival';
 import { registry } from './games';
 import { startMidway } from './midway/midway';
+import { SEASON_NAMES, setScenery, THEME_NAMES, type Season, type Theme } from './midway/palette';
+import { loadScenery, saveScenery } from './midway/scenery';
 import type { BoothSlot } from './midway/world';
 import { carnivalLink, REPO_URL, shareLinks } from './share';
 
@@ -43,6 +45,10 @@ function renderMidway() {
         <h2>Booths</h2>
         <ul></ul>
       </nav>
+      <form class="midway-scenery" aria-label="Scenery">
+        <label>Season <select name="season"></select></label>
+        <label>Theme <select name="theme"></select></label>
+      </form>
       <div class="booth-card" aria-live="polite" hidden>
         <h2></h2>
         <p class="description"></p>
@@ -81,6 +87,22 @@ function renderMidway() {
     link.hidden = !game;
     if (game) link.href = `#/play/${game.id}`;
   };
+
+  const scenery = loadScenery();
+  setScenery(scenery.season, scenery.theme);
+  const form = app.querySelector<HTMLFormElement>('.midway-scenery')!;
+  const seasonPicker = form.querySelector<HTMLSelectElement>('[name="season"]')!;
+  const themePicker = form.querySelector<HTMLSelectElement>('[name="theme"]')!;
+  for (const [value, name] of Object.entries(SEASON_NAMES))
+    seasonPicker.add(new Option(name, value));
+  for (const [value, name] of Object.entries(THEME_NAMES)) themePicker.add(new Option(name, value));
+  seasonPicker.value = scenery.season;
+  themePicker.value = scenery.theme;
+  form.addEventListener('change', () => {
+    const chosen = { season: seasonPicker.value as Season, theme: themePicker.value as Theme };
+    saveScenery(chosen);
+    midway.setScenery(chosen.season, chosen.theme);
+  });
 
   const midway = startMidway(app.querySelector('canvas')!, {
     games: registry.all(),

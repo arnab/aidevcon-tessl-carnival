@@ -370,24 +370,24 @@ interface Stripes {
   bShade: string;
 }
 
-const RED: Stripes = {
+const RED = (): Stripes => ({
   a: palette.red,
   aShade: palette.redShade,
   b: palette.cream,
   bShade: palette.creamShade,
-};
-const GOLD: Stripes = {
+});
+const GOLD = (): Stripes => ({
   a: palette.gold,
   aShade: palette.goldShade,
   b: palette.cream,
   bShade: palette.creamShade,
-};
-const BLUE: Stripes = {
+});
+const BLUE = (): Stripes => ({
   a: palette.blue,
   aShade: palette.blueShade,
   b: palette.cream,
   bShade: palette.creamShade,
-};
+});
 const TENT_COLORS = [GOLD, BLUE, BLUE, RED] as const;
 
 function rimPoint(c: Pt, r: number, angle: number, z: number): Pt {
@@ -529,7 +529,7 @@ function roundTent(
 function bigTop(ctx: Ctx, prop: Prop, t: number) {
   const cx = prop.x + prop.w / 2;
   const cy = prop.y + prop.h / 2;
-  roundTent(ctx, cx, cy, 1.9, 38, 46, RED, t, palette.red);
+  roundTent(ctx, cx, cy, 1.9, 38, 46, RED(), t, palette.red);
   const c = at(cx, cy);
   // A second ring of bunting, and gold lights round the wall.
   ringFlags(ctx, c, 1.5, 38 + 22, t, 12);
@@ -547,7 +547,7 @@ function carousel(ctx: Ctx, prop: Prop, t: number) {
   const turn = t * 0.5;
   const r = 1.75;
   oval(ctx, c[0] + 8, c[1] + 4, r * ISO_RX * 1.1, r * ISO_RY * 1.1, palette.shadow);
-  cylinder(ctx, c, r, 0, 6, RED, 24);
+  cylinder(ctx, c, r, 0, 6, RED(), 24);
   oval(ctx, c[0], c[1] - 6, r * ISO_RX, r * ISO_RY, palette.pink);
   oval(ctx, c[0], c[1] - 6, r * ISO_RX * 0.82, r * ISO_RY * 0.82, palette.pinkShade);
 
@@ -635,7 +635,7 @@ function carousel(ctx: Ctx, prop: Prop, t: number) {
   );
   horses.filter((h) => Math.sin(h.angle) >= 0).forEach(drawHorse);
 
-  dome(ctx, c, r * 1.15, roofZ, 26, RED, turn);
+  dome(ctx, c, r * 1.15, roofZ, 26, RED(), turn);
   scallopRing(ctx, c, r * 1.15, roofZ, 14, 4, [palette.red, palette.cream]);
   ringFlags(ctx, c, r * 1.05, roofZ - 6, t, 16);
   knob(ctx, c[0], c[1] - roofZ - 26);
@@ -646,7 +646,7 @@ function carousel(ctx: Ctx, prop: Prop, t: number) {
 
 /** A tent with a ridged roof running along the x axis. */
 function peakedTent(ctx: Ctx, prop: Prop, t: number) {
-  const colors = prop.variant % 2 === 0 ? BLUE : RED;
+  const colors = prop.variant % 2 === 0 ? BLUE() : RED();
   const x0 = prop.x + 0.2;
   const x1 = prop.x + prop.w - 0.2;
   const y0 = prop.y + 0.25;
@@ -949,7 +949,7 @@ function cart(ctx: Ctx, prop: Prop, t: number) {
     }
   } else if (kind === 2) {
     stroke(ctx, [top, [top[0], top[1] - 22]], palette.metalShade, 1.2);
-    dome(ctx, [top[0], top[1] - 18], 0.75, 0, 9, BLUE, 0, 10);
+    dome(ctx, [top[0], top[1] - 18], 0.75, 0, 9, BLUE(), 0, 10);
     for (let i = 0; i < 3; i++)
       oval(
         ctx,
@@ -1341,38 +1341,39 @@ function ferrisWheel(ctx: Ctx, prop: Prop, t: number) {
 
 // ── Booths ────────────────────────────────────────────────────────────────
 
-const BOOTH_SCHEMES = [
-  {
-    wall: palette.gold,
-    wallShade: palette.goldShade,
-    awning: [palette.blue, palette.cream],
-    awningShade: [palette.blueShade, palette.creamShade],
-  },
-  {
-    wall: palette.cream,
-    wallShade: palette.creamShade,
-    awning: [palette.red, palette.cream],
-    awningShade: [palette.redShade, palette.creamShade],
-  },
-  {
-    wall: palette.sky2,
-    wallShade: palette.blue,
-    awning: [palette.gold, palette.cream],
-    awningShade: [palette.goldShade, palette.creamShade],
-  },
-  {
-    wall: palette.pink,
-    wallShade: palette.pinkShade,
-    awning: [palette.red, palette.gold],
-    awningShade: [palette.redShade, palette.goldShade],
-  },
-] as const;
-const CLOSED_SCHEME = {
+const boothSchemes = () =>
+  [
+    {
+      wall: palette.gold,
+      wallShade: palette.goldShade,
+      awning: [palette.blue, palette.cream],
+      awningShade: [palette.blueShade, palette.creamShade],
+    },
+    {
+      wall: palette.cream,
+      wallShade: palette.creamShade,
+      awning: [palette.red, palette.cream],
+      awningShade: [palette.redShade, palette.creamShade],
+    },
+    {
+      wall: palette.sky2,
+      wallShade: palette.blue,
+      awning: [palette.gold, palette.cream],
+      awningShade: [palette.goldShade, palette.creamShade],
+    },
+    {
+      wall: palette.pink,
+      wallShade: palette.pinkShade,
+      awning: [palette.red, palette.gold],
+      awningShade: [palette.redShade, palette.goldShade],
+    },
+  ] as const;
+const closedScheme = () => ({
   wall: palette.closed,
   wallShade: palette.closedShade,
   awning: [palette.closed, palette.metal],
   awningShade: [palette.closedShade, palette.metalShade],
-} as const;
+});
 
 const BOOTH_WALL = 34;
 /** How far above a booth's footprint its sign hangs. */
@@ -1390,7 +1391,8 @@ function target(ctx: Ctx, r: number) {
 
 function booth(ctx: Ctx, slot: BoothSlot, name: string, t: number, glow: boolean) {
   const open = slot.gameId !== undefined;
-  const scheme = open ? BOOTH_SCHEMES[slot.index % BOOTH_SCHEMES.length] : CLOSED_SCHEME;
+  const schemes = boothSchemes();
+  const scheme = open ? schemes[slot.index % schemes.length] : closedScheme();
   const x0 = slot.x + 0.15;
   const y0 = slot.y + 0.15;
   const s = 1.7;
@@ -1607,13 +1609,13 @@ export function visitorLook(n: number): Look {
   };
 }
 
-export const PLAYER_LOOK: Look = {
+export const playerLook = (): Look => ({
   skin: palette.skins[0],
   hair: palette.hairs[2],
   shirt: palette.red,
   pants: palette.pants[0],
   cap: palette.gold,
-};
+});
 
 export function drawWalker(ctx: Ctx, walker: Walker, look: Look, player = false, t = 0) {
   const p = toScreen(walker.x, walker.y);
@@ -1739,7 +1741,7 @@ export function drawProp(ctx: Ctx, prop: Prop, t: number) {
     case 'big-top':
       return bigTop(ctx, prop, t);
     case 'round-tent': {
-      const colors = TENT_COLORS[prop.variant % TENT_COLORS.length];
+      const colors = TENT_COLORS[prop.variant % TENT_COLORS.length]();
       return roundTent(
         ctx,
         prop.x + prop.w / 2,
