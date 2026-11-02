@@ -90,14 +90,20 @@ export function isHit(shot: Shot, target: Target): boolean {
 /** A celebration burst: confetti flying out evenly in every direction from (x, y). */
 export function burstConfetti(x: number, y: number): Confetti[] {
   return Array.from({ length: CONFETTI_PER_HIT }, (_, i) => {
+    // Space the pieces evenly round a full circle, so piece i flies out at i/16 of a turn.
     const angle = (i / CONFETTI_PER_HIT) * Math.PI * 2;
+    // Every other piece is slower, which gives the burst an inner and an outer ring.
     const speed = CONFETTI_SPEED * (i % 2 === 0 ? 1 : 0.6);
     return {
       x,
       y,
+      // Split the speed along the angle into its sideways and vertical parts.
       vx: Math.cos(angle) * speed,
+      // Canvas y grows downwards, so subtracting gives every piece an upward kick
+      // before gravity in `step` pulls it back down.
       vy: Math.sin(angle) * speed - CONFETTI_SPEED / 2,
       age: 0,
+      // Cycle through the theme colours so neighbouring pieces differ.
       color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
     };
   });
