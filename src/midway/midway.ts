@@ -12,6 +12,7 @@ import {
   drawField,
   drawGroundLayer,
   drawProp,
+  drawStars,
   drawWalker,
   groundBounds,
   HORIZON,
@@ -273,6 +274,7 @@ export function startMidway(canvas: HTMLCanvasElement, options: MidwayOptions): 
     sky.addColorStop(1, palette.sky);
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, canvas.clientWidth, Math.max(0, horizon + 2));
+    drawStars(ctx, canvas.clientWidth, Math.max(0, horizon - 8), calm ? 0 : t);
 
     ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, 0, 0);
     const span = view.w + 200;

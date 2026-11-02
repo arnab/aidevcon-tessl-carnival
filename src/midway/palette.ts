@@ -58,6 +58,11 @@ export interface Palette {
   closed: string;
   closedShade: string;
   white: string;
+  stone: string;
+  stoneShade: string;
+  stoneDark: string;
+  flame: string;
+  flameCore: string;
   skins: readonly string[];
   hairs: readonly string[];
   shirts: readonly string[];
@@ -111,6 +116,11 @@ const SUMMER_CARNIVAL: Palette = {
   closed: '#a99cc4',
   closedShade: '#8a7daa',
   white: '#ffffff',
+  stone: '#b3ada3',
+  stoneShade: '#8f897f',
+  stoneDark: '#6e6960',
+  flame: '#ff8a1f',
+  flameCore: '#ffe27a',
 
   skins: ['#f1c27d', '#c68642', '#8d5524', '#e0ac69', '#ffdbac'],
   hairs: ['#3b2219', '#1b1035', '#a55728', '#e6c35c', '#6b4429'],
@@ -237,6 +247,87 @@ const THEME_COLORS: Record<Theme, Partial<Palette>> = {
   },
 };
 
+/** What each theme builds the midway out of, beyond its colours. */
+export interface ThemeStyle {
+  /** The name over the gate. */
+  gate: string;
+  /** The font family the map's signs use. */
+  font: string;
+  /** What each game's booth is built as. */
+  booth: 'stall' | 'pod' | 'keep' | 'smial';
+  /** What stands at the head of the avenue, where the big top is. */
+  landmark: 'big-top' | 'rocket' | 'castle' | 'party-tree';
+  /** What the round tents become. */
+  tent: 'tent' | 'dome' | 'hobbit-hole';
+  /** The picture over each open booth's sign. */
+  emblem: 'target' | 'planet' | 'shield' | 'ring';
+  /** What the crowd wears. */
+  costume: 'casual' | 'spacesuit' | 'cloak';
+  /** What the player wears on their head. */
+  hat: 'cap' | 'helmet' | 'crown' | 'wizard';
+  /** What drifts up into the sky. */
+  floater: 'balloon' | 'ufo' | 'raven' | 'lantern';
+  /** Whether the sky is full of stars. */
+  stars: boolean;
+  /** Whether the bunting poles burn as torches. */
+  torches: boolean;
+}
+
+export const THEME_STYLES: Record<Theme, ThemeStyle> = {
+  carnival: {
+    gate: 'TESSL CARNIVAL',
+    font: theme.font.family,
+    booth: 'stall',
+    landmark: 'big-top',
+    tent: 'tent',
+    emblem: 'target',
+    costume: 'casual',
+    hat: 'cap',
+    floater: 'balloon',
+    stars: false,
+    torches: false,
+  },
+  space: {
+    gate: 'TESSL SPACEPORT',
+    font: '"Courier New", "Lucida Console", monospace',
+    booth: 'pod',
+    landmark: 'rocket',
+    tent: 'dome',
+    emblem: 'planet',
+    costume: 'spacesuit',
+    hat: 'helmet',
+    floater: 'ufo',
+    stars: true,
+    torches: false,
+  },
+  got: {
+    gate: 'THE TESSL KEEP',
+    font: '"Times New Roman", Georgia, serif',
+    booth: 'keep',
+    landmark: 'castle',
+    tent: 'tent',
+    emblem: 'shield',
+    costume: 'cloak',
+    hat: 'crown',
+    floater: 'raven',
+    stars: false,
+    torches: true,
+  },
+  lotr: {
+    gate: 'THE TESSL SHIRE',
+    font: '"Palatino Linotype", "Book Antiqua", Palatino, serif',
+    booth: 'smial',
+    landmark: 'party-tree',
+    tent: 'hobbit-hole',
+    emblem: 'ring',
+    costume: 'cloak',
+    hat: 'wizard',
+    floater: 'lantern',
+    stars: false,
+    torches: true,
+  },
+};
+
 /** The map's colours for a season and a theme. The theme wins where both set a colour. */
 export function sceneryPalette(season: Season, theme: Theme): Palette {
   return { ...SUMMER_CARNIVAL, ...SEASON_COLORS[season], ...THEME_COLORS[theme] };
@@ -248,6 +339,10 @@ export function sceneryPalette(season: Season, theme: Theme): Palette {
  */
 export const palette: Palette = sceneryPalette('summer', 'carnival');
 
+/** What the map builds with right now. setScenery changes it, like the palette. */
+export const style: ThemeStyle = { ...THEME_STYLES.carnival };
+
 export function setScenery(season: Season, theme: Theme) {
   Object.assign(palette, sceneryPalette(season, theme));
+  Object.assign(style, THEME_STYLES[theme]);
 }
